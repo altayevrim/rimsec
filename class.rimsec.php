@@ -7,13 +7,13 @@ class rimsec {
     private $template = 'Your IP is banned from our servers. (<em>IP adresiniz sunucularımızdan banlandı.</em>)<hr />IP: {ip}<br /><br /><center>RimSec v1.0<br />Rimtay Yazılım</center>';
     private $ipDetails = false;
     private $sessions = true;
-    private $checkTimeout = 300;
+    private $checkTimeout = 60;
     public $log = [];
-    private $showLogs = true;
+    private $showLogs = false;
     private $freepass = false;
     function __construct($settings)
     {
-        if(count($settings['mysqlInfo']) != 4){
+        if (count($settings['mysqlInfo']) != 4) {
             echo 'RimSec MYSQL Ayarları Hatalı!';
             exit;
         }
@@ -22,9 +22,9 @@ class rimsec {
             $this->log[] = 'Freepass for this IP';
             $this->freepass = true;
         }
-        if($this->freepass == false){
+        if ($this->freepass == false) {
             try {
-                $this->connection = new PDO("mysql:host=". $settings['mysqlInfo']['host'] .";dbname=". $settings['mysqlInfo']['dbase']. ";charset=utf8", $settings['mysqlInfo']['user'], $settings['mysqlInfo']['pass']);
+                $this->connection = new PDO("mysql:host=" . $settings['mysqlInfo']['host'] . ";dbname=" . $settings['mysqlInfo']['dbase'] . ";charset=utf8", $settings['mysqlInfo']['user'], $settings['mysqlInfo']['pass']);
             } catch (PDOException $e) {
                 // print $e->getMessage();
                 echo 'RimSec MySQL Hatası!';
@@ -32,8 +32,8 @@ class rimsec {
             }
             $this->log[] = 'MySQL Handled';
         }
-        
-        if(is_bool($settings['sessions'])){
+
+        if (is_bool($settings['sessions'])) {
             $this->sessions = $settings['sessions'];
         }
         $this->getDetails();
@@ -42,17 +42,18 @@ class rimsec {
     function __destruct()
     {
         $this->connection = null;
-        if($this->showLogs){
+        if ($this->showLogs) {
             print_r($this->log);
         }
     }
 
-    function template($template,$type = 'html'){
+    function template($template, $type = 'html')
+    {
         $this->log[] = 'template() starts';
-        if($type == 'html' && file_exists($template)){
+        if ($type == 'html' && file_exists($template)) {
             $this->log[] = 'Template added: HTML';
             $this->template = file_get_contents($template);
-        }elseif($type == 'base'){
+        } elseif ($type == 'base') {
             $this->log[] = 'Template added: Base64';
             $this->template = base64_decode($template);
         }
@@ -73,42 +74,46 @@ class rimsec {
         return $ip;
     }
 
-    function checkBan($priority = 0){
-        if($this->freepass){
+    function checkBan($priority = 0)
+    {
+        if ($this->freepass) {
             return true;
         }
         $ip = $this->ipDetails;
         $this->log[] = 'checkBan() starts';
-        if($ip){
-            if($ip['active'] == 0){
+        if ($ip) {
+            if ($ip['active'] == 0) {
                 $this->log[] = 'Not active, return false';
                 return false;
             }
-            if($ip['priority'] < $priority){
+            if ($ip['priority'] < $priority) {
                 $this->log[] = 'Priority is too low, return false';
                 return false;
             }
-            if($ip['permanent'] == 0){
+            if ($ip['permanent'] == 0) {
                 $this->log[] = 'Record is not permanent. Check ban end time';
-                if(time() > strtotime($ip['banend'])){
+                if (time() > strtotime($ip['banend'])) {
                     $this->log[] = 'Time is up, return false';
                     return false;
                 }
             }
             $this->log[] = 'Banned';
-            echo str_replace(['{ip}', '{banend}', '{reason}', '{created}'], [$ip['ip'], $ip['banend'], $ip['reason'], $ip['created']] , $this->template);
+            echo str_replace(['{ip}', '{banend}', '{reason}', '{created}'], [$ip['ip'], $ip['banend'], $ip['reason'], $ip['created']], $this->template);
             exit;
         }
     }
 
-    function addBan($priority = 10,$permanent = 1, $banend = "2019-12-11 10:00:00",  $reason = "No reason"){
+    function addBan($priority = 10, $permanent = 1, $banend = "2019-12-11 10:00:00",  $reason = "No reason")
+    {
         if ($this->freepass) {
             return true;
         }
         $this->log[] = 'addBan() starts';
+        unset($_SESSION['rimsec-ban']);
+        $this->getDetails();
         $ip = $this->ipDetails;
 
-        if($ip){
+        if ($ip) {
             $this->log[] = 'There is an old record.';
             $this->checkBan();
             $this->log[] = 'addBan() ends successfully';
@@ -132,18 +137,20 @@ class rimsec {
             'banend' => $banend
         ]);
         if ($insert) {
+            unset($_SESSION['rimsec-ban']);
             // $last_id = $this->connection->lastInsertId();
-            echo str_replace(['{ip}', '{banend}', '{reason}', '{created}'], [$ip['ip'], $ip['banend'], $ip['reason'], $ip['created']], $this->template);
+            echo str_replace(['{ip}', '{banend}', '{reason}', '{created}'], [$this->getIP(), $banend, $reason, date("Y-m-d H:i:s")], $this->template);
             $this->log[] = 'addBan() ends with ban';
             exit;
-        }else{
+        } else {
             echo 'RimSec MySQL Hatası!';
             $this->log[] = 'addBan() ends with error';
             exit;
         }
     }
 
-    public function getDetails(){
+    public function getDetails()
+    {
         if ($this->freepass) {
             return true;
         }
@@ -155,26 +162,26 @@ class rimsec {
                     $this->log[] = 'Valid session found';
                     if ($_SESSION['rimsec-ban']['banned'] == true) {
                         $this->log[] = 'Already banned session is found';
-                        if(is_array($_SESSION['rimsec-ban']['ip_details'])){
+                        if (is_array($_SESSION['rimsec-ban']['ip_details'])) {
                             $this->log[] = 'And found ip details';
                             $this->ipDetails = $_SESSION['rimsec-ban']['ip_details'];
                             $this->log[] = 'getDetails() ends successfully FROM SESSIONS';
                             return true;
                         }
-                    }else{
+                    } else {
                         $this->ipDetails = false;
                         $this->log[] = 'getDetails() ends successfully FROM SESSIONS';
                         return true;
                     }
-                }else{
+                } else {
                     $this->log[] = 'Session lastcheck timeout ended';
                 }
             }
         }
-        $query = $this->connection->prepare("SELECT * FROM ip_details WHERE ip = :ip"); 
+        $query = $this->connection->prepare("SELECT * FROM ip_details WHERE ip = :ip");
         $query->execute(['ip' => $this->getIP()]);
         $getDetail = $query->fetch(PDO::FETCH_ASSOC);
-        if( $getDetail ){
+        if ($getDetail) {
             if ($this->sessions) {
                 $this->log[] = 'Banned SESSION created';
                 $_SESSION['rimsec-ban'] = [
@@ -184,7 +191,7 @@ class rimsec {
                 ];
             }
             $this->ipDetails = $getDetail;
-        }else{
+        } else {
             if ($this->sessions) {
                 $this->log[] = 'No detail has been found SESSION created';
                 $_SESSION['rimsec-ban'] = [
