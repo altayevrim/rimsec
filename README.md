@@ -104,15 +104,15 @@ You can easily add bans to the system with this method. Default parameters are s
     $rimsec->addBan($priority, $permanent, $banend , $reason);
 ```
 **$priority** - Priority value of IP, higher is better.  
-**$banend** - Ban end time. You can set a DATETIME value or just write +1 week, +1 day etc. more details (https://www.php.net/manual/tr/function.strtotime.php)[here].
+**$banend** - Ban end time. You can set a DATETIME value or just write +1 week, +1 day etc. more details [here](https://www.php.net/manual/tr/function.strtotime.php).  
 **$permanent** - Is it a Permanent BAN? If it is True or 1; system will NOT look the *$banend* value.  
 **$reason** - BAN reason.  
 
 These values will be available and converted to the all templates automatically.
 
-# Credit
-Coded by Evrim Altay KOLUAÇIK   25-26/12/2019   OD/UA
-https://evrimaltay.net  
+# Credit  
+Coded by Evrim Altay KOLUAÇIK   25-26/12/2019   OD/UA  
+https://evrimaltay.net   
 https://rimtay.com   
 
 **Use at your own risk.**
